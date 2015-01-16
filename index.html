@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>Document</title>
+</head>
+<body>
+	<canvas id="board" width="600" height="600"></canvas>
+	<script>
+		var tangram = [
+			//left trangle
+			{p:[{x:100, y:100}, {x:200, y:200}, {x:100, y:300}], color:"#68c0d2", center:{x:100, y:200}},
+			//top trangle
+			{p:[{x:300, y:100}, {x:200, y:200}, {x:100, y:100}], color:"#c9e891", center:{x:200, y:100}},
+			//center trangle
+			{p:[{x:150, y:250}, {x:200, y:200}, {x:250, y:250}], color:"#f0f223", center:{x:200, y:250}},
+			//bottom square
+			{p:[{x:100, y:300}, {x:150, y:250}, {x:250, y:250}, {x:200, y:300}], color:"#ef3d61", center:{x:175, y:275}},
+			//center square
+			{p:[{x:200, y:200}, {x:250, y:150}, {x:300, y:200}, {x:250, y:250}], color:"#a796c2", center:{x:250, y:200}},
+			//right trangle
+			{p:[{x:300, y:200}, {x:250, y:150}, {x:300, y:100}], color:"#f195c8", center:{x:300, y:150}},
+			//right bottom trangle
+			{p:[{x:300, y:200}, {x:300, y:300}, {x:200, y:300}], color:"#f8c82c", center:{x:250, y:250}}
+		]
+		
+		window.onload = function(){
+			var canvas = document.getElementById("board");
+			var ctx = canvas.getContext("2d");
+
+			canvas.width = 600;
+			canvas.height = 600;
+
+			//alert(Math.atan2(0,100) - Math.atan2(100,0) )
+			//alert(-90*Math.PI/180)
+			var selected = -1;
+			var startDragPosition = {}
+			var lastPosition = {}
+			var endDragPosition = {}
+			var isDraging = false;
+			var isRotating = false;
+			var changingTangram = tangram;
+
+			canvas.onmousedown = function(e){
+				var e = window.event || e;
+				var rect = this.getBoundingClientRect();
+				var mouseX = e.clientX - rect.left;
+				var mouseY = e.clientY - rect.top;
+
+				//check rotate first
+				selected = canRotateShap(mouseX, mouseY);
+				if( selected != -1 ){
+					isRotating = true;
+					startDragPosition.x = mouseX;
+					startDragPosition.y = mouseY;
+					console.log(startDragPosition)
+				}else{
+					//check selected shap for transimite
+					selected = checkSelectedShap(ctx, mouseX, mouseY);
+					if ( selected != -1 ){
+						isDraging = true;
+						startDragPosition.x = mouseX;
+						startDragPosition.y = mouseY;
+						//for drag
+						lastPosition.x = startDragPosition.x;
+						lastPosition.y = startDragPosition.y;
+						console.log(startDragPosition)
+					}
+				}
+			}
+
+			canvas.onmouseup = function(e){
+				var e = window.event || e;
+				var rect = this.getBoundingClientRect();
+				var mouseX = e.clientX - rect.left;
+				var mouseY = e.clientY - rect.top;
+				if(isDraging){
+					endDragPosition.x = mouseX;
+					endDragPosition.y = mouseY;
+
+					//click rotate
+					if( endDragPosition.x == startDragPosition.x && endDragPosition.y == startDragPosition.y){
+						//console.log(startDragPosition)
+						var piece = tangram[selected];
+						var center = piece.center;
+						var rotateRadian = Math.PI / 4;
+						for(var j = 0; j < piece.p.length; j++){
+							var r = Math.sqrt(Math.pow(piece.p[j].x - piece.center.x, 2) + Math.pow(piece.p[j].y - piece.center.y, 2));
+							piece.p[j].x = piece.center.x + r * Math.cos(rotateRadian);
+							piece.p[j].y = piece.center.y + r * Math.sin(rotateRadian);
+
+							rotateRadian += Math.PI / 2;
+						}
+					}
+
+					isDraging = false;
+					selected = -1;
+					console.log(endDragPosition)
+				}
+				if(isRotating){
+					endDragPosition.x = mouseX;
+					endDragPosition.y = mouseY;
+					
+					isRotating = false;
+					selected = -1;
+					console.log(endDragPosition)
+				}
+			}
+
+			canvas.onmousemove = function(e){
+				var e = window.event || e;
+				var rect = this.getBoundingClientRect();
+				var mouseX = e.clientX - rect.left;
+				var mouseY = e.clientY - rect.top;
+
+				//transmite the shap
+				if(isDraging){
+					
+					var moveDistance = {};
+					//calculate the distance
+					moveDistance.x = mouseX - lastPosition.x;
+					moveDistance.y = mouseY - lastPosition.y;
+					//fresh the start point
+					lastPosition.x = mouseX;
+					lastPosition.y = mouseY;
+
+					//change the position of selected shap
+					var piece = tangram[selected];
+					for(var j = 0; j < piece.p.length; j ++) {
+						piece.p[j].x += moveDistance.x;
+						piece.p[j].y += moveDistance.y;
+					}
+					piece.center.x += moveDistance.x;
+					piece.center.y += moveDistance.y;
+				}
+				//rotate the shap
+				if(isRotating){
+					var piece = tangram[selected];
+					var center = piece.center;
+
+					var rotateRadian = Math.atan2(mouseY - center.y, mouseX - center.x) - Math.atan2(startDragPosition.y - center.y, startDragPosition.x - center.x);
+
+					for(var j = 0; j < piece.p.length; j++){
+						var r = Math.sqrt(Math.pow(piece.p[j].x - piece.center.x, 2) + Math.pow(piece.p[j].y - piece.center.y, 2));
+						piece.p[j].x = piece.center.x + r * Math.cos(rotateRadian);
+						piece.p[j].y = piece.center.y + r * Math.sin(rotateRadian);
+
+						rotateRadian += Math.PI / 2;
+					}
+					
+		
+
+					for(var j = 0; j < piece.p.length; j++){
+						var r = Math.sqrt(Math.pow(piece.p[j].x - piece.center.x, 2) + Math.pow(piece.p[j].y - piece.center.y, 2));
+						piece.p[j].x = piece.center.x + r * Math.cos(rotateRadian);
+						piece.p[j].y = piece.center.y + r * Math.sin(rotateRadian);
+
+						rotateRadian += Math.PI / 2;
+					}
+						
+				}
+			}
+
+			setInterval(function(){
+			 	drawTangram(canvas);
+
+			}, 30);
+			
+
+		}
+
+		function canRotateShap(x, y){
+			for(var i = 0; i < tangram.length; i++){
+				for(var j = 0; j < tangram[i].p.length; j++){
+					var pointX = tangram[i].p[j].x;
+					var pointY = tangram[i].p[j].y;
+					var distance = Math.pow(pointX - x, 2) + Math.pow(pointY - y, 2);
+					if(distance <= 100){
+						console.log(22,i);
+						return i;
+					}
+				}
+			}
+			return -1;
+		}
+		function checkSelectedShap(ctx, x, y){
+			for(var i = 0; i < tangram.length; i++){
+				drawShap( tangram[i], ctx )
+				if(ctx.isPointInPath(x, y)){
+					console.log(11,i);
+					return i
+				}
+			}
+			return -1;
+		}
+
+		function drawShap( shap, ctx){
+
+			ctx.beginPath();
+			ctx.moveTo(shap.p[0].x, shap.p[0].y);
+
+			for(var j = 1; j < shap.p.length; j ++) {
+				ctx.lineTo(shap.p[j].x, shap.p[j].y);
+			}
+			ctx.closePath();
+
+			ctx.fillStyle = shap.color;
+		
+			ctx.strokeStyle = "black";
+			ctx.lineWidth = "0.5"
+
+			ctx.fill();
+			ctx.stroke();
+		}
+
+		function drawTangram(canvas){
+			var ctx = canvas.getContext("2d");
+			ctx.clearRect(0, 0, canvas.width, canvas.height);
+			for(var i = 0; i < tangram.length; i++){
+				drawShap( tangram[i], ctx );
+			}
+		}
+	</script>
+</body>
+</html>
